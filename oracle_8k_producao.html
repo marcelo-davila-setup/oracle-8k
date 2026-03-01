@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oracle 8K</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: #ffffff;
+      color: #000000;
+      min-height: 100vh;
+    }
+
+    /* ========== MODO CAPTURA ========== */
+    #modo-captura {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 32px;
+      padding: 40px;
+    }
+
+    #modo-captura h1 {
+      font-size: 24px;
+      font-weight: normal;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #cccccc;
+    }
+    .dot.gravando { background: #000000; animation: pulso 1.2s ease-in-out infinite; }
+    .dot.pausado  { background: #cccccc; }
+
+    @keyframes pulso {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    .cronometro {
+      font-size: 48px;
+      letter-spacing: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .botoes {
+      display: flex;
+      gap: 20px;
+    }
+
+    .btn {
+      padding: 14px 40px;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid #000000;
+      background: #ffffff;
+      color: #000000;
+      transition: all 0.2s;
+    }
+
+    .btn:hover { background: #000000; color: #ffffff; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn.ativo { background: #000000; color: #ffffff; }
+
+    .log-captura {
+      font-size: 12px;
+      color: #666666;
+      letter-spacing: 1px;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    /* ========== MODO DASHBOARD ========== */
+    #modo-dashboard {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 32px;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #000000;
+      margin-bottom: 28px;
+    }
+
+    .dashboard-header h1 {
+      font-size: 13px;
+      font-weight: normal;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+
+    .dashboard-meta {
+      display: flex;
+      gap: 24px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #444444;
+    }
+
+    .dashboard-meta span { text-transform: uppercase; }
+
+    .colunas {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+      flex: 1;
+    }
+
+    .coluna {
+      border-right: 1px solid #dddddd;
+      padding-right: 32px;
+    }
+    .coluna:last-child { border-right: none; padding-right: 0; }
+
+    .coluna-titulo {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #888888;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eeeeee;
+    }
+
+    .coluna-conteudo {
+      font-size: 17px;
+      line-height: 1.7;
+      color: #111111;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #coluna-frase .coluna-conteudo {
+      font-size: 22px;
+      line-height: 1.5;
+      font-weight: bold;
+    }
+
+    .entregas-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .entrega-item {
+      padding: 14px 0;
+      border-bottom: 1px solid #eeeeee;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .entrega-item:last-child { border-bottom: none; }
+
+    .nivel-badge {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: 1px solid #000000;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+    }
+
+    .vazio {
+      color: #bbbbbb;
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    /* Transição suave ao atualizar */
+    .atualizado {
+      animation: flash 0.5s ease;
+    }
+    @keyframes flash {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ========== MODO CAPTURA ========== -->
+<div id="modo-captura">
+  <h1>Oracle 8K</h1>
+
+  <div class="status-bar">
+    <div class="dot" id="dot-status"></div>
+    <span id="txt-status">Aguardando início</span>
+  </div>
+
+  <div class="cronometro" id="cronometro">00:00:00</div>
+
+  <div class="botoes">
+    <button class="btn" id="btn-iniciar" onclick="iniciarSessao()">Iniciar Sessão</button>
+    <button class="btn" id="btn-pausar" onclick="pausarSessao()" disabled>Pausar</button>
+    <button class="btn" id="btn-encerrar" onclick="encerrarSessao()" disabled>Encerrar</button>
+  </div>
+
+  <div class="log-captura" id="log-captura">
+    Configure o microfone no navegador e clique em Iniciar Sessão.
+  </div>
+</div>
+
+<!-- ========== MODO DASHBOARD ========== -->
+<div id="modo-dashboard">
+  <div class="dashboard-header">
+    <h1>Oracle 8K</h1>
+    <div class="dashboard-meta">
+      <span id="dash-tema">—</span>
+      <span id="dash-nivel">—</span>
+      <span id="dash-hora">—</span>
+    </div>
+  </div>
+
+  <div class="colunas">
+
+    <div class="coluna" id="coluna-arquivista">
+      <div class="coluna-titulo">Arquivista</div>
+      <div class="coluna-conteudo vazio" id="txt-arquivista">Aguardando primeira transcrição...</div>
+    </div>
+
+    <div class="coluna" id="coluna-oracle">
+      <div class="coluna-titulo">Oracle — Entregas</div>
+      <div class="entregas-lista" id="lista-entregas">
+        <div class="vazio">Aguardando...</div>
+      </div>
+    </div>
+
+    <div class="coluna" id="coluna-frase">
+      <div class="coluna-titulo">Frase Semente</div>
+      <div class="coluna-conteudo vazio" id="txt-frase">—</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO — ALTERE AQUI
+// ============================================================
+const WEBHOOK_AUDIO    = 'https://webhook.adrianasousa.com/webhook/oracle-audio';
+const WEBHOOK_DASHBOARD = 'https://webhook.adrianasousa.com/webhook/oracle-dashboard';
+const INTERVALO_AUDIO  = 20000; // 20 segundos por chunk
+const INTERVALO_POLL   = 3000;  // 3 segundos de polling
+
+// ============================================================
+// DETECTAR MODO PELA URL
+// /?modo=dashboard → exibe dashboard
+// /?modo=captura   → exibe controles (padrão)
+// ============================================================
+const params = new URLSearchParams(window.location.search);
+const modo = params.get('modo') || 'captura';
+
+if (modo === 'dashboard') {
+  document.getElementById('modo-captura').style.display = 'none';
+  document.getElementById('modo-dashboard').style.display = 'flex';
+  iniciarPolling();
+} else {
+  document.getElementById('modo-captura').style.display = 'flex';
+  document.getElementById('modo-dashboard').style.display = 'none';
+}
+
+// ============================================================
+// MODO CAPTURA — VARIÁVEIS
+// ============================================================
+let mediaRecorder = null;
+let audioStream   = null;
+let chunks        = [];
+let intervaloChunk = null;
+let intervaloRelogio = null;
+let pausado       = false;
+let segundosTotais = 0;
+
+function formatarTempo(s) {
+  const h = String(Math.floor(s / 3600)).padStart(2, '0');
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  const seg = String(s % 60).padStart(2, '0');
+  return `${h}:${m}:${seg}`;
+}
+
+function setStatus(txt, gravando) {
+  document.getElementById('txt-status').textContent = txt;
+  const dot = document.getElementById('dot-status');
+  dot.className = 'dot ' + (gravando ? 'gravando' : 'pausado');
+}
+
+function setLog(txt) {
+  document.getElementById('log-captura').textContent = txt;
+}
+
+async function iniciarSessao() {
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    setStatus('Gravando', true);
+    setLog('Sessão iniciada. Enviando chunks a cada 20 segundos.');
+
+    document.getElementById('btn-iniciar').disabled = true;
+    document.getElementById('btn-pausar').disabled = false;
+    document.getElementById('btn-encerrar').disabled = false;
+
+    iniciarChunk();
+    intervaloChunk = setInterval(rotacionarChunk, INTERVALO_AUDIO);
+    intervaloRelogio = setInterval(() => {
+      if (!pausado) {
+        segundosTotais++;
+        document.getElementById('cronometro').textContent = formatarTempo(segundosTotais);
+      }
+    }, 1000);
+
+  } catch (e) {
+    setLog('Erro ao acessar microfone: ' + e.message);
+  }
+}
+
+function iniciarChunk() {
+  chunks = [];
+  mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  mediaRecorder.onstop = enviarChunk;
+  mediaRecorder.start();
+}
+
+function rotacionarChunk() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  if (!pausado) setTimeout(iniciarChunk, 300);
+}
+
+async function enviarChunk() {
+  if (chunks.length === 0) return;
+  const blob = new Blob(chunks, { type: 'audio/webm' });
+  const form = new FormData();
+  form.append('audio', blob, 'chunk.webm');
+
+  try {
+    const res = await fetch(WEBHOOK_AUDIO, { method: 'POST', body: form });
+    const data = await res.json();
+    setLog(`Chunk enviado — ${new Date().toLocaleTimeString('pt-BR')} — Status: ${data.status || 'ok'}`);
+  } catch (e) {
+    setLog('Erro ao enviar chunk: ' + e.message);
+  }
+}
+
+function pausarSessao() {
+  pausado = !pausado;
+  const btn = document.getElementById('btn-pausar');
+  if (pausado) {
+    btn.textContent = 'Retomar';
+    btn.classList.add('ativo');
+    setStatus('Pausado', false);
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    setLog('Sessão pausada. Clique em Retomar para continuar.');
+  } else {
+    btn.textContent = 'Pausar';
+    btn.classList.remove('ativo');
+    setStatus('Gravando', true);
+    iniciarChunk();
+    setLog('Sessão retomada.');
+  }
+}
+
+function encerrarSessao() {
+  if (!confirm('Encerrar sessão Oracle?')) return;
+  clearInterval(intervaloChunk);
+  clearInterval(intervaloRelogio);
+  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+  document.getElementById('btn-iniciar').disabled = false;
+  document.getElementById('btn-pausar').disabled = true;
+  document.getElementById('btn-encerrar').disabled = true;
+  setStatus('Encerrado', false);
+  setLog(`Sessão encerrada. Duração: ${document.getElementById('cronometro').textContent}`);
+  segundosTotais = 0;
+  document.getElementById('cronometro').textContent = '00:00:00';
+  pausado = false;
+}
+
+// ============================================================
+// MODO DASHBOARD — POLLING
+// ============================================================
+function iniciarPolling() {
+  buscarDados();
+  setInterval(buscarDados, INTERVALO_POLL);
+}
+
+async function buscarDados() {
+  try {
+    const res = await fetch(WEBHOOK_DASHBOARD);
+    const data = await res.json();
+    if (data && data.arquivista) atualizarDashboard(data);
+  } catch (e) {
+    console.log('Polling: aguardando dados...', e.message);
+  }
+}
+
+function atualizarDashboard(data) {
+  // Tema e nível no header
+  if (data.tema)  document.getElementById('dash-tema').textContent  = data.tema.toUpperCase();
+  if (data.nivel) document.getElementById('dash-nivel').textContent = data.nivel.toUpperCase();
+  if (data.timestamp) document.getElementById('dash-hora').textContent = data.timestamp;
+
+  // Coluna Arquivista
+  const txtArquivista = document.getElementById('txt-arquivista');
+  if (data.arquivista && data.arquivista !== txtArquivista.textContent) {
+    txtArquivista.textContent = data.arquivista;
+    txtArquivista.classList.remove('vazio');
+    flash(txtArquivista);
+  }
+
+  // Coluna Oracle — entregas
+  const listaEntregas = document.getElementById('lista-entregas');
+  if (data.entregas && data.entregas.length > 0) {
+    const nivelBadge = data.nivel ? `<div class="nivel-badge">${data.nivel}</div>` : '';
+    listaEntregas.innerHTML = data.entregas.map((e, i) =>
+      `<div class="entrega-item">${i === 0 ? nivelBadge : ''}<div>${e}</div></div>`
+    ).join('');
+    flash(listaEntregas);
+  }
+
+  // Coluna Frase Semente
+  const txtFrase = document.getElementById('txt-frase');
+  if (data.frase_semente && data.frase_semente !== txtFrase.textContent) {
+    txtFrase.textContent = data.frase_semente;
+    txtFrase.classList.remove('vazio');
+    flash(txtFrase);
+  }
+}
+
+function flash(el) {
+  el.classList.remove('atualizado');
+  void el.offsetWidth;
+  el.classList.add('atualizado');
+}
+</script>
+</body>
+</html>
